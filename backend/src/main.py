@@ -1,3 +1,4 @@
+import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -27,10 +28,24 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Add CORS middleware
+# Add CORS middleware. Defaults to the deployed frontend plus local dev;
+# override/extend via the CORS_ORIGINS env var (comma-separated origins,
+# no trailing slashes) without needing a code change, e.g. to add a Vercel
+# preview deployment URL.
+DEFAULT_CORS_ORIGINS = [
+    "https://hacktoon-todo-frontend.vercel.app",
+    "http://localhost:3000",
+]
+cors_origins_env = os.getenv("CORS_ORIGINS")
+allow_origins = (
+    [origin.strip() for origin in cors_origins_env.split(",") if origin.strip()]
+    if cors_origins_env
+    else DEFAULT_CORS_ORIGINS
+)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify your frontend URL
+    allow_origins=allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
