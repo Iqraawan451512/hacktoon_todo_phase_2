@@ -1,0 +1,28 @@
+# --- Claude Code session scratch files ---
+tmpclaude-*-cwd
+
+# --- Logs ---
+*.log
+
+# --- Python / backend ---
+__pycache__/
+*.py[cod]
+*.sqlite3
+backend/todo_app.db
+.env
+!.env.example
+*.egg-info/
+
+# --- Node / frontend ---
+node_modules/
+.next/
+out/
+build/
+dist/
+*.tsbuildinfo
+
+# --- Editor / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
