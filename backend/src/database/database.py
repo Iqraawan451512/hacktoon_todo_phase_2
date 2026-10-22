@@ -7,13 +7,34 @@ from sqlalchemy.orm import sessionmaker
 import os
 from contextlib import asynccontextmanager
 
-# Database URL from environment variable
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./todo_app.db")
+# Database URL from environment variable. Falls back to the Neon-prefixed
+# var Vercel's Neon marketplace integration sets (NEON_DATABASE_URL, the
+# pooled connection string recommended for serverless functions) before
+# defaulting to local SQLite.
+DATABASE_URL = (
+    os.getenv("DATABASE_URL")
+    or os.getenv("NEON_DATABASE_URL")
+    or "sqlite:///./todo_app.db"
+)
+
+# Neon/Heroku-style URLs use the "postgres://" scheme, which SQLAlchemy 1.4+
+# no longer recognizes as an alias for "postgresql://".
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = "postgresql://" + DATABASE_URL[len("postgres://"):]
 
 # Create async engine - use different approach for SQLite vs PostgreSQL
 if DATABASE_URL.startswith("postgresql"):
-    # For PostgreSQL, use async engine directly
-    async_engine: AsyncEngine = create_async_engine(DATABASE_URL)
+    # The sync engine uses the plain "postgresql://" URL (psycopg2 driver).
+    # The async engine (currently unused by any route, but still constructed
+    # here and disposed of in the app lifespan) needs an async-capable
+    # driver, so it gets its own "postgresql+asyncpg://" URL instead of the
+    # sync one - passing the sync URL directly would raise at engine
+    # creation time, since create_async_engine rejects non-async drivers.
+    if "+" in DATABASE_URL.split("://", 1)[0]:
+        async_url = DATABASE_URL
+    else:
+        async_url = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+    async_engine: AsyncEngine = create_async_engine(async_url)
     # Also create a sync engine for sync operations
     sync_engine = sync_create_engine(DATABASE_URL)
 elif DATABASE_URL.startswith("sqlite"):

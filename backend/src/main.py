@@ -1,9 +1,18 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlmodel import SQLModel
 from .api.auth_router import router as auth_router
 from .api.task_router import router as task_router
-from .database.database import async_engine
+from .database.database import async_engine, sync_engine
+
+# Create any tables that don't exist yet (e.g. a fresh Postgres database on
+# first deploy). This only runs once per cold start (module import is
+# cached for the life of the serverless container) and create_all() never
+# drops or alters tables that already exist, so it's safe to call every
+# time - the normal migration path (alembic upgrade head) is still the
+# source of truth for schema changes going forward.
+SQLModel.metadata.create_all(sync_engine)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
